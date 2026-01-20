@@ -7,12 +7,13 @@
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
 
+#define M_TRACE_ON
+#include <bundle.h>
+
 #define LED_PIN1 7
-#define CNTL_PIN 21
+#define ADC_CHAN ADC_CHANNEL_8 
 
-#define ADC_CHAN          ADC_CHANNEL_8 
-static const char *TAG = "ADC";
-
+const char *TAG = "ADC Trace: ";
 static adc_oneshot_unit_handle_t adc_handle;
 static adc_cali_handle_t cali_handle;
 bool cali_enabled = false;
@@ -26,21 +27,8 @@ void setup(void)
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type    = GPIO_INTR_DISABLE
     };
-    
     gpio_config(&led_conf);
     gpio_set_level(LED_PIN1, 1);
-
-        gpio_config_t cntl_conf = {
-        .pin_bit_mask = 1ULL << CNTL_PIN,
-        .mode         = GPIO_MODE_OUTPUT,
-        .pull_up_en   = GPIO_PULLUP_DISABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type    = GPIO_INTR_DISABLE
-    };
-    
-    gpio_config(&cntl_conf);
-    gpio_set_level(CNTL_PIN, 0);
-
 
     // ADC unit
     adc_oneshot_unit_init_cfg_t unit_cfg = {
@@ -69,15 +57,18 @@ void setup(void)
     }
     ESP_LOGI(TAG, "ACD initialized");
 }
-
-int adc_read_voltage_mv(void)
-{
-    int raw = 0;
-    int voltage_mv = 0;
-
+int adc_read_voltage_rw(void) {
+    int raw = 0; 
     ESP_ERROR_CHECK(
         adc_oneshot_read(adc_handle, ADC_CHAN, &raw)
     );
+    return raw;
+}
+
+int adc_read_voltage_mv(void)
+{
+    int raw = adc_read_voltage_rw();    
+    int voltage_mv = 0;
 
     if (cali_enabled) {
         ESP_ERROR_CHECK(
@@ -92,20 +83,5 @@ int adc_read_voltage_mv(void)
 void app_main(void)
 {
     setup();
-    uint32_t max_= 3152;
-    uint32_t pwm = 0;
-    uint32_t res = 100;
-    uint32_t ub = 0;
-    uint32_t lb = 100;
-    while (1) {        
-        pwm = (adc_read_voltage_mv() * res) / max_;
-        if (pwm > ub) {
-            gpio_set_level(CNTL_PIN, 1);     
-            esp_rom_delay_us(pwm);            
-        }
-        if (pwm < lb) {
-            gpio_set_level(CNTL_PIN, 0); 
-            esp_rom_delay_us(res - pwm);
-        } 
-    }
+    main_task();
 }
