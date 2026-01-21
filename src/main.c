@@ -12,6 +12,8 @@
 
 #define LED_PIN1 7
 #define ADC_CHAN ADC_CHANNEL_8 
+#define ATTENUATION ADC_ATTEN_DB_12
+#define RESOLUTION ADC_BITWIDTH_12
 
 const char *TAG = "ADC Trace: ";
 static adc_oneshot_unit_handle_t adc_handle;
@@ -36,14 +38,14 @@ void setup(void)
     };
     // ADC channel
     adc_oneshot_chan_cfg_t chan_cfg = {
-        .bitwidth = ADC_BITWIDTH_12,
-        .atten = ADC_ATTEN_DB_12, 
+        .bitwidth = RESOLUTION,
+        .atten = ATTENUATION, 
     };
     adc_cali_curve_fitting_config_t cali_cfg = {
         .unit_id = ADC_UNIT_1,
         .chan = ADC_CHAN,
-        .atten = ADC_ATTEN_DB_12,
-        .bitwidth = ADC_BITWIDTH_12,
+        .atten = ATTENUATION,
+        .bitwidth = RESOLUTION,
     };
     
     ESP_ERROR_CHECK(adc_oneshot_new_unit(&unit_cfg, &adc_handle));
@@ -64,7 +66,19 @@ int adc_read_voltage_rw(void) {
     );
     return raw;
 }
+int adc_read_voltage_from_raw(int raw)
+{
+    int voltage_mv = 0;
 
+    if (cali_enabled) {
+        ESP_ERROR_CHECK(
+            adc_cali_raw_to_voltage(cali_handle, raw, &voltage_mv)
+        );
+        return voltage_mv; 
+    }
+
+    return -1; 
+}
 int adc_read_voltage_mv(void)
 {
     int raw = adc_read_voltage_rw();    
