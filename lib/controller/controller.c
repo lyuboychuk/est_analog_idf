@@ -1,5 +1,5 @@
 #include "controller.h"
-#ifndef TRACE_ON
+#ifdef CNTL_ON
 #pragma message "Motor or led controller"
 
 #include "freertos/FreeRTOS.h"
